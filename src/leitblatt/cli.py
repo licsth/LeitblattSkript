@@ -15,10 +15,10 @@ import subprocess
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("csvfile")
-    parser.add_argument("--minSheets", type=int, default=0)
+    parser.add_argument("csvfile", help="Pfad zur CSV-Datei mit den Teilnehmerdaten")
+    parser.add_argument("--minSheets", type=int, default=0, help="Erzeugt mindestens diese Anzahl an Sheets, auch wenn weniger nötig wären")
     parser.add_argument("--pdf", action="store_true",
-                        help="Erzeuge zusätzlich PDF-Dateien")
+                        help="Erzeugt zusätzliche PDF-Datei")
     return parser.parse_args()
 
 def load_template():
