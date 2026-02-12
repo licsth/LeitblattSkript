@@ -127,7 +127,7 @@ def write_to_ods(template_path, output_path, students, klausurname, num_tasks, s
 
     for i in range(num_duplications):
         new_column = TableColumn()
-        template_column = sheet.getElementsByType(TableColumn)[5]
+        template_column = sheet.getElementsByType(TableColumn)[4]
         new_column.setAttribute("stylename", template_column.getAttribute("stylename"))
         sheet.insertBefore(new_column, template_column)  # Am Ende der Spalten einfügen
         for row in rows:
