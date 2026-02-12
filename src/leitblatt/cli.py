@@ -4,7 +4,7 @@ import os
 import math
 import shutil
 from odf.opendocument import load
-from odf.table import Table, TableRow, TableCell
+from odf.table import Table, TableRow, TableColumn, TableCell
 from odf.text import P
 import subprocess
 
@@ -16,6 +16,7 @@ import subprocess
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("csvfile", help="Pfad zur CSV-Datei mit den Teilnehmerdaten")
+    parser.add_argument("--numTasks", type=int, default=0, help="Anzahl der Aufgaben, >= 3")
     parser.add_argument("--minSheets", type=int, default=0, help="Erzeugt mindestens diese Anzahl an Sheets, auch wenn weniger nötig wären")
     parser.add_argument("--pdf", action="store_true",
                         help="Erzeugt zusätzliche PDF-Datei")
@@ -98,7 +99,7 @@ def split_into_chunks(data, min_sheets, max_per_sheet=20):
 # ODS beschreiben
 # ----------------------------
 
-def write_to_ods(template_path, output_path, students, klausurname, sheet_number):
+def write_to_ods(template_path, output_path, students, klausurname, num_tasks, sheet_number):
     shutil.copy(template_path, output_path)
 
     doc = load(output_path)
@@ -106,6 +107,8 @@ def write_to_ods(template_path, output_path, students, klausurname, sheet_number
     # reset name of the sheet
     sheet.setAttribute("name", f"Sheet{sheet_number}")
     rows = sheet.getElementsByType(TableRow)
+
+    
 
     # -------------------------------------
     # 1️⃣ Titel in A1 setzen
@@ -120,7 +123,28 @@ def write_to_ods(template_path, output_path, students, klausurname, sheet_number
     set_cell(last_cell, f"{sheet_number}")
 
     start_row_index = 3  # Zeile 4 (0-basiert)
+    num_duplications = num_tasks - 3
+
+    for i in range(num_duplications):
+        new_column = TableColumn()
+        template_column = sheet.getElementsByType(TableColumn)[5]
+        new_column.setAttribute("stylename", template_column.getAttribute("stylename"))
+        sheet.insertBefore(new_column, template_column)  # Am Ende der Spalten einfügen
+        for row in rows:
+            cells = row.getElementsByType(TableCell)
+            dupulcation_index = 5 if len(cells) >= 6 else 1
+            if len(cells) < dupulcation_index + 1:
+                continue  # Nicht genug Zellen, überspringen
+            copy_cell = cells[dupulcation_index]
+            new_cell = TableCell()
+            new_cell.setAttribute("stylename", copy_cell.getAttribute("stylename"))
+            row.insertBefore(new_cell, copy_cell)
     
+    header_row = rows[start_row_index - 1]
+    header_cells = header_row.getElementsByType(TableCell)
+    for excercise in range(num_duplications+2):
+        set_cell(header_cells[excercise+5], f"{excercise + 2}.")
+
     for i, student in enumerate(students):
         row = rows[start_row_index + i]
         cells = row.getElementsByType(TableCell)
@@ -213,7 +237,8 @@ def main():
             out_ods_path,
             chunk,
             klausurname,
-            i
+            args.numTasks,
+            i,
         )
         
     combined_out_ods_path = os.path.join(out_dir, f"{base_name}_Leitblätter.ods")
