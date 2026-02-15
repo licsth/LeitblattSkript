@@ -15,18 +15,18 @@ import subprocess
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("csvfiles", help="Pfad(e) zur CSV-Datei mit den Teilnehmerdaten", nargs="+")
-    parser.add_argument("--numTasks", type=int, default=0, help="Anzahl der Aufgaben, >= 3")
-    parser.add_argument("--minSheets", type=int, default=0, help="Erzeugt mindestens diese Anzahl an Sheets, auch wenn weniger nötig wären")
-    parser.add_argument("--sort", action="store_true", help="Sortiert die Teilnehmer dateiübergreifend alphabetisch nach Name")
+    parser.add_argument("csvfiles", help="File path(s) to participant data", nargs="+")
+    parser.add_argument("--numTasks", type=int, default=0, help="Number of tasks, >= 3")
+    parser.add_argument("--minSheets", type=int, default=0, help="Generate at least this many sheets, even if not necessary based on participant count")
+    parser.add_argument("--sort", action="store_true", help="Sort participants alphabetically across all files")
     parser.add_argument("--pdf", action="store_true",
-                        help="Erzeugt zusätzliche PDF-Datei mit allen Leitblättern (benötigt LibreOffice im PATH)")
+                        help="Generate PDF file with all sheets (requires LibreOffice in PATH)")
     return parser.parse_args()
 
 def load_template():
     template_path = os.path.join(os.path.dirname(__file__), "data", "template.ods")
     if not os.path.exists(template_path):
-        raise FileNotFoundError(f"Template-Datei nicht gefunden: {template_path}")
+        raise FileNotFoundError(f"Template file not found: {template_path}")
     return template_path
 
 # ----------------------------
@@ -200,16 +200,16 @@ def convert_to_pdf(path):
         except FileNotFoundError:
             continue  # Nächster Pfad
         except subprocess.CalledProcessError:
-            print(f"PDF-Konvertierung fehlgeschlagen für {path}")
+            print(f"PDF conversion failed for {path}")
             return
 
     # Wenn keiner der Pfade funktioniert hat
-    print("LibreOffice (soffice) wurde nicht gefunden. Bitte installiere es oder füge es zum PATH hinzu.")
+    print("LibreOffice (soffice) not found. Please install it or add it to your PATH.")
 
 
 def combine_ods(ods_files, output_path):
     if not ods_files:
-        print("Keine ODS-Dateien zum Kombinieren gefunden.")
+        print("No ODS files to combine.")
         return
 
     # Lade das erste Dokument als Basis
