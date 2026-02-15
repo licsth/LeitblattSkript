@@ -15,11 +15,12 @@ import subprocess
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("csvfile", help="Pfad zur CSV-Datei mit den Teilnehmerdaten")
+    parser.add_argument("csvfiles", help="Pfad(e) zur CSV-Datei mit den Teilnehmerdaten", nargs="+")
     parser.add_argument("--numTasks", type=int, default=0, help="Anzahl der Aufgaben, >= 3")
     parser.add_argument("--minSheets", type=int, default=0, help="Erzeugt mindestens diese Anzahl an Sheets, auch wenn weniger nötig wären")
+    parser.add_argument("--sort", action="store_true", help="Sortiert die Teilnehmer dateiübergreifend alphabetisch nach Name")
     parser.add_argument("--pdf", action="store_true",
-                        help="Erzeugt zusätzliche PDF-Datei")
+                        help="Erzeugt zusätzliche PDF-Datei mit allen Leitblättern (benötigt LibreOffice im PATH)")
     return parser.parse_args()
 
 def load_template():
@@ -32,43 +33,51 @@ def load_template():
 # CSV einlesen (wie vorher)
 # ----------------------------
 
-def read_and_prepare_data(filename):
-    with open(filename, "r", encoding="iso-8859-1", newline="") as f:
-        # Sample lesen für Delimiter-Erkennung
-        sample = f.read(4096)
-        f.seek(0)
+def read_and_prepare_data(filenames, sort):
+    rows = []
+    for filename in filenames:
+        with open(filename, "r", encoding="iso-8859-1", newline="") as f:
+            # Sample lesen für Delimiter-Erkennung
+            sample = f.read(4096)
+            f.seek(0)
 
-        dialect = csv.Sniffer().sniff(sample, delimiters=";\t")
+            dialect = csv.Sniffer().sniff(sample, delimiters=";\t")
 
-        reader = csv.reader(f, dialect)
+            reader = csv.reader(f, dialect)
 
-        # Erste Zeile = Meta-Zeile
-        meta_row = next(reader)
-        klausurname = meta_row[1].strip() if len(meta_row) > 1 else ""
+            # Erste Zeile = Meta-Zeile
+            meta_row = next(reader)
+            klausurname = meta_row[1].strip() if len(meta_row) > 1 else ""
 
-        # Zweite Zeile = Header
-        header = next(reader)
+            # Zweite Zeile = Header
+            header = next(reader)
 
-        # Restliche Zeilen mit DictReader lesen
-        dict_reader = csv.DictReader(f, fieldnames=header, dialect=dialect)
-        rows = list(dict_reader)
+            # Restliche Zeilen mit DictReader lesen
+            dict_reader = csv.DictReader(f, fieldnames=header, dialect=dialect)
+            rows.extend(list(dict_reader))
 
     prepared = []
+    one_has_number = False
     for row in rows:
         vorname = (row.get("Vorname") or "").strip()
         mittelname = (row.get("Mittelname") or "").strip()
         full_vorname = f"{vorname} {mittelname}".strip()
-
+        if row.get("Prüfungsnummer", "").strip():
+            one_has_number = True
+        
         prepared.append({
             "Name": row["Name"].strip(),
             "Vorname": full_vorname,
-            "Matrikelnummer": row["Matrikelnummer"].strip()
+            "Matrikelnummer": row["Matrikelnummer"].strip(),
+            "Nummer": row.get("Prüfungsnummer", "").strip() 
         })
 
-    prepared.sort(key=lambda x: (x["Name"].lower(), x["Vorname"].lower()))
+    if sort:
+        prepared.sort(key=lambda x: (x["Name"].lower(), x["Vorname"].lower()))
 
-    for i, row in enumerate(prepared, start=1):
-        row["Nummer"] = i
+    if sort or not one_has_number:
+        for i, row in enumerate(prepared, start=1):
+            row["Nummer"] = i
 
     return prepared, klausurname
 
@@ -220,11 +229,13 @@ def combine_ods(ods_files, output_path):
 
 def main():
     args = parse_args()
+    
+    filenames = args.csvfiles
 
-    base_name = os.path.splitext(os.path.basename(args.csvfile))[0]
-    out_dir = os.path.dirname(args.csvfile)
+    base_name = os.path.splitext(os.path.basename(filenames[0]))[0]
+    out_dir = os.path.dirname(filenames[0])
 
-    data, klausurname = read_and_prepare_data(args.csvfile)
+    data, klausurname = read_and_prepare_data(filenames, sort=args.sort)
     chunks = split_into_chunks(data, args.minSheets)
 
     out_ods_paths = []
