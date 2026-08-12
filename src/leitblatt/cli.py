@@ -126,7 +126,7 @@ def write_to_ods(template_path, output_path, students, klausurname, num_tasks, s
     first_row = rows[0]
     first_row_cells = first_row.getElementsByType(TableCell)
 
-    set_cell(first_row_cells[0], f"Ergebnisse der Klausur {klausurname}")
+    set_cell(first_row_cells[0], f"Ergebnisse {klausurname}")
 
     # Sheet-Nummer in letzte Spalte von Zeile 1
     last_cell = first_row_cells[-2]
@@ -242,7 +242,7 @@ def main():
     out_ods_paths = []
 
     for i, chunk in enumerate(chunks, start=1):
-        out_ods_path = os.path.join(out_dir, f"{base_name}_sheet_{i + args.offset//20 + (1 if args.offset != 0 else 0)}.ods")
+        out_ods_path = os.path.join(out_dir, f"{base_name}_sheet_{i + math.ceil(args.offset/20)}.ods")
         out_ods_paths.append(out_ods_path)
         write_to_ods(
             load_template(),
@@ -250,7 +250,7 @@ def main():
             chunk,
             klausurname,
             args.numTasks,
-            i+args.offset//20 + (1 if args.offset != 0 else 0),
+            i+math.ceil(args.offset/20),
         )
         
     combined_out_ods_path = os.path.join(out_dir, f"{base_name}_Leitblätter.ods")
