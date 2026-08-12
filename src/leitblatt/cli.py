@@ -18,6 +18,7 @@ def parse_args():
     parser.add_argument("csvfiles", help="File path(s) to participant data", nargs="+")
     parser.add_argument("--numTasks", type=int, default=0, help="Number of tasks, >= 3")
     parser.add_argument("--minSheets", type=int, default=0, help="Generate at least this many sheets, even if not necessary based on participant count")
+    parser.add_argument("--offset", type=int, default=0, help="Start the numbering of participants at this number. The numbering of sheets will start accordingly.")
     parser.add_argument("--sort", action="store_true", help="Sort participants alphabetically across all files")
     parser.add_argument("--pdf", action="store_true",
                         help="Generate PDF file with all sheets (requires LibreOffice in PATH)")
@@ -33,7 +34,7 @@ def load_template():
 # CSV einlesen (wie vorher)
 # ----------------------------
 
-def read_and_prepare_data(filenames, sort):
+def read_and_prepare_data(filenames, sort, offset=0):
     rows = []
     for filename in filenames:
         with open(filename, "r", encoding="iso-8859-1", newline="") as f:
@@ -69,14 +70,14 @@ def read_and_prepare_data(filenames, sort):
             "Name": row["Name"].strip(),
             "Vorname": full_vorname,
             "Matrikelnummer": row["Matrikelnummer"].strip(),
-            "Nummer": row.get("Prüfungsnummer", "").strip() 
+            "Nummer": int(row.get("Prüfungsnummer", "").strip()) + offset if row.get("Prüfungsnummer", "").strip() else None
         })
 
     if sort:
         prepared.sort(key=lambda x: (x["Name"].lower(), x["Vorname"].lower()))
 
     if sort or not one_has_number:
-        for i, row in enumerate(prepared, start=1):
+        for i, row in enumerate(prepared, start=1+offset):
             row["Nummer"] = i
 
     return prepared, klausurname
@@ -235,13 +236,13 @@ def main():
     base_name = os.path.splitext(os.path.basename(filenames[0]))[0]
     out_dir = os.path.dirname(filenames[0])
 
-    data, klausurname = read_and_prepare_data(filenames, sort=args.sort)
+    data, klausurname = read_and_prepare_data(filenames, sort=args.sort, offset=args.offset)
     chunks = split_into_chunks(data, args.minSheets)
 
     out_ods_paths = []
 
     for i, chunk in enumerate(chunks, start=1):
-        out_ods_path = os.path.join(out_dir, f"{base_name}_sheet_{i}.ods")
+        out_ods_path = os.path.join(out_dir, f"{base_name}_sheet_{i + args.offset//20 + (1 if args.offset != 0 else 0)}.ods")
         out_ods_paths.append(out_ods_path)
         write_to_ods(
             load_template(),
@@ -249,7 +250,7 @@ def main():
             chunk,
             klausurname,
             args.numTasks,
-            i,
+            i+args.offset//20 + (1 if args.offset != 0 else 0),
         )
         
     combined_out_ods_path = os.path.join(out_dir, f"{base_name}_Leitblätter.ods")
